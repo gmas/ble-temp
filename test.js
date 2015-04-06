@@ -1,41 +1,42 @@
 #!/bin/env node
 var nrfuart = require('nrfuart');
-console.log('starting...');
 
-//setInterval(function() {
-  nrfuart.discoverAll(function onDiscover(ble_uart) {
-    // enable disconnect notifications
-    //ble_uart.on('disconnect', function() {
-    //  console.log('disconnected!');
-    //});
+function printVal(uuid, data) {
+  date = new Date();
+  temp = parseFloat(data.toString());
+  result = JSON.stringify({uuid: uuid, date: date, temp: temp});
+  console.log(result);
+}
 
-    // connect and setup
-    console.log('connecting');
-    ble_uart.connectAndSetup(function onConnect () {
-      //var writeCount = 0;
+function onDiscover(ble_uart) {
+  function onConnect () {
+    console.warn('connected to: ', ble_uart.uuid);
 
-      console.log('connected to: ', ble_uart.uuid);
-
-      ble_uart.readDeviceName(function(devName) {
-        //console.log('Device name:', devName);
-      });
-
-      ble_uart.on('data', function(data) {
-        date = new Date();
-        temp = parseFloat(data.toString());
-        result = JSON.stringify({uuid: ble_uart.uuid, date: date, temp: temp});
-        
-        console.log('received: ', result );
-        nrfuart.stopDiscoverAll(onDiscover);
-        ble_uart.disconnect(onConnect);
-        process.exit(0);
-      });
-
-      var TESTPATT = 'Hello world! ' ; //+ writeCount.toString();
-      ble_uart.write(TESTPATT, function() {
-        console.log('data sent:', TESTPATT);
-        //writeCount++;
-      });
+    ble_uart.on('data', function(data) {
+      printVal(ble_uart.uuid, data);
+      ble_uart.disconnect(onConnect); 
+      process.exit(0);
     });
-  });
-//}, 10000);
+
+    var TESTPATT = 'GET' ;
+    ble_uart.write(TESTPATT);
+  }
+
+  // connect to discovered device
+  ble_uart.connectAndSetup(onConnect);
+
+  // disconnect after 5s
+  setTimeout(function(){ 
+    console.warn('calling Disconnect on ble_uart');
+    ble_uart.disconnect(onConnect); 
+  }, 7000);
+
+}
+
+//start discovery
+nrfuart.discoverAll(onDiscover);
+//stop discovery and exit after 10s
+setTimeout(function(){ 
+  nrfuart.stopDiscoverAll(onDiscover); 
+  process.exit(1);
+}, 10000);
