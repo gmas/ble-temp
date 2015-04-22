@@ -2,12 +2,19 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
 )
+
+type SensorValue struct {
+	Uuid string
+	Date string
+	Temp float64
+}
 
 func printCommand(cmd *exec.Cmd) {
 	fmt.Printf("==> Executing: %s\n", strings.Join(cmd.Args, " "))
@@ -21,7 +28,7 @@ func printError(err error) {
 
 func readSensors(s chan []byte, ctrl chan int) {
 	//TODO tick every 2 mins
-	ticker := time.NewTicker(time.Millisecond * 5000)
+	ticker := time.NewTicker(time.Millisecond * 7000)
 
 	for t := range ticker.C {
 		// Create an *exec.Cmd
@@ -45,9 +52,17 @@ func readSensors(s chan []byte, ctrl chan int) {
 }
 
 func consumeSensorValues(s chan []byte, ctrl chan int) {
+	var dat SensorValue
+	//var dat map[string]interface{}
 	for {
 		result := <-s
 		printOutput(result)
+
+		if err := json.Unmarshal(result, &dat); err != nil {
+			panic(err)
+		}
+		fmt.Println(dat)
+
 		ctrl <- 0
 	}
 }
