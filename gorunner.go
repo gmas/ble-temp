@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 func printCommand(cmd *exec.Cmd) {
@@ -18,41 +19,42 @@ func printError(err error) {
 	}
 }
 
-func printOutput(outs []byte) {
-	if len(outs) > 0 {
-		fmt.Printf("==> Output: %s\n", string(outs))
-	}
-}
-
-//TODO run every 2 mins
 func readSensors(s chan []byte, ctrl chan int) {
-	// Create an *exec.Cmd
-	fmt.Printf("==>readSensors\n")
-	cmd := exec.Command("/usr/bin/node", "test.js")
+	//TODO tick every 2 mins
+	ticker := time.NewTicker(time.Millisecond * 5000)
 
-	// Stdout buffer
-	cmdOutput := &bytes.Buffer{}
-	// Attach buffer to command
-	cmd.Stdout = cmdOutput
+	for t := range ticker.C {
+		// Create an *exec.Cmd
+		fmt.Printf("==>readSensors. tick at %v \n", t)
+		cmd := exec.Command("/usr/bin/node", "test.js")
+		// Stdout buffer
+		cmdOutput := &bytes.Buffer{}
+		// Attach buffer to command
+		// Only output the command's stdout
+		cmd.Stdout = cmdOutput
 
-	// Execute command
-	printCommand(cmd)
-	err := cmd.Run() // will wait for command to return
-	if err != nil {
-		printError(err)
-		ctrl <- 1
+		// Execute command
+		printCommand(cmd)
+		err := cmd.Run() // will wait for command to return
+		if err != nil {
+			printError(err)
+			ctrl <- 1
+		}
+		s <- cmdOutput.Bytes()
 	}
-
-	// Only output the commands stdout
-	//printOutput(cmdOutput.Bytes())
-	s <- cmdOutput.Bytes()
 }
 
-func printValues(s chan []byte, ctrl chan int) {
+func consumeSensorValues(s chan []byte, ctrl chan int) {
 	for {
 		result := <-s
 		printOutput(result)
 		ctrl <- 0
+	}
+}
+
+func printOutput(outs []byte) {
+	if len(outs) > 0 {
+		fmt.Printf("==> Output: %s\n", string(outs))
 	}
 }
 
@@ -61,7 +63,7 @@ func main() {
 	c := make(chan []byte)
 	ctrl := make(chan int)
 	go readSensors(c, ctrl)
-	go printValues(c, ctrl)
+	go consumeSensorValues(c, ctrl)
 
 	for {
 		result := <-ctrl
