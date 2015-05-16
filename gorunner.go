@@ -1,20 +1,15 @@
 package main
 
 import (
+	"./dal"
 	"bytes"
-	"encoding/json"
 	"fmt"
+	_ "github.com/mattn/go-sqlite3"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
 )
-
-type SensorValue struct {
-	Uuid string
-	Date string
-	Temp float64
-}
 
 func printCommand(cmd *exec.Cmd) {
 	fmt.Printf("==> Executing: %s\n", strings.Join(cmd.Args, " "))
@@ -27,17 +22,18 @@ func printError(err error) {
 }
 
 func readSensors(s chan []byte, ctrl chan int) {
-	//TODO tick every 2 mins
-	ticker := time.NewTicker(time.Millisecond * 7000)
+	ticker := time.NewTicker(time.Millisecond * 60000)
 
 	for t := range ticker.C {
 		// Create an *exec.Cmd
-		fmt.Printf("==>readSensors. tick at %v \n", t)
+		fmt.Printf("\n==>readSensors. tick at %v \n", t)
 		cmd := exec.Command("/usr/bin/node", "test.js")
+
 		// Stdout buffer
 		cmdOutput := &bytes.Buffer{}
-		// Attach buffer to command
+
 		// Only output the command's stdout
+		// Attach buffer to command
 		cmd.Stdout = cmdOutput
 
 		// Execute command
@@ -52,16 +48,25 @@ func readSensors(s chan []byte, ctrl chan int) {
 }
 
 func consumeSensorValues(s chan []byte, ctrl chan int) {
-	var dat SensorValue
-	//var dat map[string]interface{}
+	//var dat SensorValue
 	for {
 		result := <-s
+		fmt.Printf("\n==>got sensor value. %v \n", time.Now())
 		printOutput(result)
 
-		if err := json.Unmarshal(result, &dat); err != nil {
-			panic(err)
+		readout, err := dal.NewReadoutFromJson(result)
+		if err != nil {
+			//panic(err)
+			printError(err)
+			ctrl <- 1
+			continue
 		}
-		fmt.Println(dat)
+		fmt.Println(readout)
+		if err := readout.Insert(); err != nil {
+			printError(err)
+			ctrl <- 1
+			continue
+		}
 
 		ctrl <- 0
 	}
