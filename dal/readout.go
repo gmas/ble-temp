@@ -15,6 +15,7 @@ type Readout struct {
 }
 
 func getDb() *sql.DB {
+	// db is pointer to sql.DB
 	db, err := sql.Open("sqlite3", "./foo.sql3")
 	if err != nil {
 		log.Fatal(err)
@@ -52,7 +53,7 @@ func (sensorVal *Readout) Insert() error {
 	defer stmt.Close()
 
 	// Execute statement
-	// TODO add uuid to table and insert
+	// TODO add uuid to table and insert ?
 	stmt.Exec(sensorVal.Date, sensorVal.Temp, 0)
 	if err != nil {
 		log.Fatal(err)
@@ -60,21 +61,20 @@ func (sensorVal *Readout) Insert() error {
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-
 	return nil
 }
 
-func createDb() {
-	//sqlStmt := `
-	//CREATE TABLE sensor_data
-	//	(id INTEGER NOT NULL PRIMARY KEY,
-	//	 time datetime,
-	//	 temperature FLOAT,
-	//	 humidity FLOAT);
-	//	 `
-	//_, err = db.Exec(sqlStmt)
-	//if err != nil {
-	//	log.Printf("%q: %s\n", err, sqlStmt)
-	//	return
-	//}
-}
+//func createDb() {
+//	sqlStmt := `
+//	CREATE TABLE sensor_data
+//		(id INTEGER NOT NULL PRIMARY KEY,
+//		 time datetime,
+//		 temperature FLOAT,
+//		 humidity FLOAT);
+//		 `
+//	_, err = db.Exec(sqlStmt)
+//	if err != nil {
+//		log.Printf("%q: %s\n", err, sqlStmt)
+//		return
+//	}
+//}
